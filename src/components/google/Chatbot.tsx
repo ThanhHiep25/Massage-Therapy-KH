@@ -83,11 +83,11 @@ const Chatbot = () => {
                     key={index}
                     className="bg-white/80 dark:bg-gray-900 p-4 rounded-lg mb-4 shadow-sm border border-gray-300 dark:border-gray-700 outline outline-1 outline-gray-400"
                 >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="flex flex-col items-start gap-4">
                         <img
                             src={service.images[0]}
                             alt="spa-massage"
-                            className="w-full sm:w-[140px] h-[90px] object-cover rounded-md flex-shrink-0"
+                            className="w-full h-[90px] object-cover rounded-md flex-shrink-0"
                         />
                         <div className="text-justify w-full">
                             <h3 className="text-lg font-bold text-purple-700 dark:text-purple-300">

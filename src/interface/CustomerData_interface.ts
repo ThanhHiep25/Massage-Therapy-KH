@@ -1,6 +1,7 @@
 export interface CustomerDataFull {
   id: number;
   name: string;
+  username: string; 
   email: string;
   phone: string;
   address?: string;

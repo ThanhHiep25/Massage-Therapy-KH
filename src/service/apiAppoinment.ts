@@ -35,6 +35,20 @@ export const getAppointmentAll = async () => {
   }
 };
 
+// Lấy danh sach lịch hẹn theo id
+export const getAllAppointmentById = async (id: number) => {
+  try {
+    const response = await api.get(`appointments/user/${id}`);
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw error;
+    } else {
+      throw new Error("Khong the ket noi den server");
+    }
+  }
+};
+
 // Xóa lịch hẹn
 export const deleteAppointment = async (id: number) => {
   try {

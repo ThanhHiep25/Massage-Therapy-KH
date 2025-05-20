@@ -35,6 +35,20 @@ export const getAllOrders = async () => {
   }
 };
 
+// Lấy danh sách sản phẩm theo id
+export const getAllOrderById = async (id: number) => {
+  try {
+    const response = await api.get(`orders/users/${id}`);
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw error;
+    } else {
+      throw new Error("Khong the ket noi den server");
+    }
+  }
+};
+
 // Xóa sản phẩm
 export const deleteOrder = async (id: number) => {
   try {

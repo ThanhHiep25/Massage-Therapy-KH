@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAppointmentAll } from "../../service/apiAppoinment";
+import { getAllAppointmentById} from "../../service/apiAppoinment";
 import { AppointmentResponse } from "../../interface/AppointmentForm_interface";
 import { Service } from "../../interface/AppointmentForm_interface";
 import { Step } from "../../interface/AppointmentForm_interface";
@@ -19,7 +19,7 @@ const statusColor = {
   SCHEDULED: "bg-green-200 text-green-800 border-green-300",
   CANCELLED: "bg-red-200 text-red-800 border-red-300",
   COMPLETED: "bg-blue-200 text-blue-800 border-blue-300",
-  PAID: "bg-orange-200 text-orange-800 border-blue-300",
+  PAID: "bg-green-200 text-black border-blue-300",
 };
 
 const statusLabel: Record<AppointmentStatus, string> = {
@@ -64,7 +64,7 @@ const AppointmentList: React.FC<AppointmentListProps> = ({ filterByStatus }) => 
       const parsedUser = JSON.parse(user);
       const userEmail = parsedUser.email?.toLowerCase();
 
-      const data: AppointmentResponse[] = await getAppointmentAll();
+      const data: AppointmentResponse[] = await getAllAppointmentById(parsedUser.id);
 
       // Lọc lịch hẹn theo email khách hàng
       const filtered: AppointmentResponse[] = data.filter(

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../hook/AuthContext";
 import { Mail, User, Camera, Phone, Lock, X, Eye, EyeOff, MapPin } from "lucide-react";
 import { CustomerDataFull } from "../../interface/CustomerData_interface";
+import axios from "axios"; // Import axios for error type checking
+import { updateCustomer } from "../../service/apiCustomer";
 
 const ProfileDetail: React.FC = () => {
   const { login, user } = useAuth();
@@ -30,7 +32,7 @@ const ProfileDetail: React.FC = () => {
     const lowercaseRegex = /[a-z]/;
     const digitRegex = /[0-9]/;
     const specialCharRegex = /[@]/;
-  
+
     return (
       lengthRegex.test(password) &&
       uppercaseRegex.test(password) &&
@@ -38,7 +40,7 @@ const ProfileDetail: React.FC = () => {
       digitRegex.test(password) &&
       specialCharRegex.test(password)
     );
-  };  
+  };
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -57,7 +59,6 @@ const ProfileDetail: React.FC = () => {
     description: user?.description || "",
     gender: user?.gender || "other",
     dateOfBirth: user?.dateOfBirth || "",
-
     birthDay: "",
     birthMonth: "",
     birthYear: "",
@@ -67,7 +68,15 @@ const ProfileDetail: React.FC = () => {
     if (!user) {
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
-        login(JSON.parse(storedUser)); // Khôi phục user từ localStorage
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          // Ensure parsedUser has the expected structure before calling login
+          if (parsedUser && typeof parsedUser === 'object') {
+            login(parsedUser); // Khôi phục user từ localStorage
+          }
+        } catch (e) {
+          console.error("Failed to parse user from localStorage", e);
+        }
       }
     }
   }, [user, login]);
@@ -84,8 +93,6 @@ const ProfileDetail: React.FC = () => {
         description: user.description || "",
         gender: user.gender || "other",
         dateOfBirth: user.dateOfBirth || "",
-
-        // Set lại ngày, tháng, năm từ dateOfBirth
         birthDay: day || "",
         birthMonth: month || "",
         birthYear: year || "",
@@ -100,29 +107,37 @@ const ProfileDetail: React.FC = () => {
     const newFormData = { ...formData, [name]: value };
     setFormData(newFormData);
 
-    // Kiểm tra xem có thay đổi không
-    setIsChanged(
-      newFormData.name !== user?.name ||
-      newFormData.email !== user?.email ||
-      newFormData.phone !== user?.phone ||
-      newFormData.address !== user?.address ||
-      newFormData.description !== user?.description ||
-      newFormData.gender !== user?.gender ||
-      newFormData.birthDay !== user?.birthDay ||
-      newFormData.birthMonth !== user?.birthMonth ||
-      newFormData.birthYear !== user?.birthYear
-    );
+    // Determine if form data relevant to the main "Update" button has changed
+    const initialDay = user?.dateOfBirth?.split('-')[2] || "";
+    const initialMonth = user?.dateOfBirth?.split('-')[1] || "";
+    const initialYear = user?.dateOfBirth?.split('-')[0] || "";
+
+    let changed = false;
+    if (newFormData.name.trim() !== (user?.name || "")) changed = true;
+    if (newFormData.gender !== (user?.gender || "other")) changed = true;
+    if (
+      newFormData.birthDay !== initialDay ||
+      newFormData.birthMonth !== initialMonth ||
+      newFormData.birthYear !== initialYear
+    ) {
+      changed = true;
+    }
+    setIsChanged(changed);
   };
 
   // Hàm cập nhật Tên, Giới tính, Ngày sinh
   const handleUpdate = async () => {
+    if (!user || typeof user.id !== 'number') {
+      alert("Thông tin người dùng không hợp lệ hoặc ID người dùng bị thiếu.");
+      return;
+    }
+
     try {
       const updateData: Partial<CustomerDataFull> = {};
       let hasChange = false;
 
-      // So sánh và cập nhật tên
       const trimmedName = formData.name.trim();
-      if (trimmedName !== user?.name) {
+      if (trimmedName !== (user?.name || "")) {
         if (!validateName(trimmedName)) {
           alert("Tên phải từ 2-50 ký tự và chỉ chứa chữ cái và khoảng trắng.");
           return;
@@ -131,169 +146,154 @@ const ProfileDetail: React.FC = () => {
         hasChange = true;
       }
 
-      // So sánh và cập nhật giới tính
-      if (formData.gender !== user?.gender) {
+      if (formData.gender !== (user?.gender || "other")) {
         updateData.gender = formData.gender;
         hasChange = true;
       }
 
-      // So sánh và cập nhật ngày sinh
       const { birthDay, birthMonth, birthYear } = formData;
       if (birthDay && birthMonth && birthYear) {
         const newDateOfBirth = `${birthYear}-${birthMonth.padStart(2, "0")}-${birthDay.padStart(2, "0")}`;
-        if (newDateOfBirth !== user?.dateOfBirth) {
+        if (newDateOfBirth !== (user?.dateOfBirth || "")) {
           updateData.dateOfBirth = newDateOfBirth;
           hasChange = true;
         }
       } else if (!user?.dateOfBirth && (birthDay || birthMonth || birthYear)) {
         alert("Vui lòng chọn đầy đủ ngày, tháng và năm sinh.");
         return;
+      } else if (user?.dateOfBirth && (!birthDay || !birthMonth || !birthYear)) {
+        // If date of birth was set and now user is clearing it
+        updateData.dateOfBirth = ""; // Or null, depending on your backend
+        hasChange = true;
       }
+
 
       if (!hasChange) {
         alert("Không có thay đổi nào để cập nhật.");
         return;
       }
 
-      // Gửi API cập nhật
-      const res = await fetch(`/api/auth/${user?.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...user,
-          ...updateData,
-        }),
-      });
+      const payload = { ...user, ...updateData } as CustomerDataFull;
+      const updatedUserResponse = await updateCustomer(user.id, payload);
 
-      if (!res.ok) throw new Error("Cập nhật thông tin thất bại");
-
-      const updatedUser = await res.json();
-      login(updatedUser);
+      login(updatedUserResponse);
       setIsChanged(false);
       alert("Cập nhật thành công!");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        alert(err.message || "Có lỗi xảy ra khi cập nhật thông tin.");
-      } else {
-        alert("Có lỗi không xác định.");
+      let errorMessage = "Có lỗi không xác định khi cập nhật thông tin.";
+      if (axios.isAxiosError(err) && err.response) {
+        errorMessage = (err.response.data)?.message || err.message || "Lỗi từ server khi cập nhật thông tin.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
+      alert(errorMessage);
     }
   };
 
   // Hàm đổi số điện thoại
   const handleUpdatePhone = async () => {
+    if (!user || typeof user.id !== 'number') {
+      setPhoneError("Thông tin người dùng không hợp lệ hoặc ID người dùng bị thiếu.");
+      return;
+    }
     if (!validatePhoneNumber(newPhone)) {
       setPhoneError("Số điện thoại không hợp lệ (đủ 10 số và bắt đầu bằng số 0)");
       return;
     }
+    setPhoneError(''); // Clear previous error
 
     try {
-      const res = await fetch(`/api/auth/${user?.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...user,
-          phone: newPhone,
-        }),
-      });
+      const payload = {
+        ...user,
+        phone: newPhone,
+      };
+      const updatedUserResponse = await updateCustomer(user.id, payload);
 
-      if (!res.ok) throw new Error("Cập nhật thất bại");
+      login(updatedUserResponse);
 
-      const updatedUser = await res.json();
-
-      login(updatedUser); // Cập nhật context
-
-      // Đóng modal và xoá dữ liệu
       setShowPhoneModal(false);
-      setPhoneError('');
       setNewPhone('');
-    } 
+      alert("Cập nhật số điện thoại thành công!");
+    }
     catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || "Có lỗi xảy ra.");
-      } else {
-        setPhoneError("Lỗi khi cập nhật số điện thoại.");
+      let errorMessage = "Lỗi khi cập nhật số điện thoại.";
+      if (axios.isAxiosError(err) && err.response) {
+        errorMessage = (err.response.data)?.message || err.message || "Lỗi server khi cập nhật số điện thoại.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
+      setPhoneError(errorMessage);
     }
   };
 
   // Hàm đổi địa chỉ
   const handleUpdateAddress = async () => {
+    if (!user || typeof user.id !== 'number') {
+      setAddressError("Thông tin người dùng không hợp lệ hoặc ID người dùng bị thiếu.");
+      return;
+    }
     if (!newAddress.trim()) {
       setAddressError("Địa chỉ không được để trống.");
       return;
     }
+    setAddressError(''); // Clear previous error
 
     try {
-      const res = await fetch(`/api/auth/${user?.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...user,
-          address: newAddress.trim(),
-        }),
-      });
+      const payload = {
+        ...user,
+        address: newAddress.trim(),
+      };
+      const updatedUserResponse = await updateCustomer(user.id, payload);
 
-      if (!res.ok) throw new Error("Cập nhật địa chỉ thất bại");
+      login(updatedUserResponse);
 
-      const updatedUser = await res.json();
-
-      login(updatedUser); // Cập nhật context
-
-      // Đóng modal và reset lại state
       setShowAddressModal(false);
-      setAddressError('');
       setNewAddress('');
-    } 
+      alert("Cập nhật địa chỉ thành công!");
+    }
     catch (err: unknown) {
-      if (err instanceof Error) {
-        setAddressError(err.message || "Có lỗi xảy ra.");
-      } else {
-        setAddressError("Lỗi khi cập nhật địa chỉ.");
+      let errorMessage = "Lỗi khi cập nhật địa chỉ.";
+      if (axios.isAxiosError(err) && err.response) {
+        errorMessage = (err.response.data)?.message || err.message || "Lỗi server khi cập nhật địa chỉ.";
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
+      setAddressError(errorMessage);
     }
   };
 
-  // Hàm đổi mật khẩu
+  // Hàm đổi mật khẩu (remains unchanged as per request focus)
   const handleChangePassword = async () => {
     setError("");
     setSuccess("");
-  
+
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError("Vui lòng điền đầy đủ thông tin.");
       return;
     }
-  
+
     if (newPassword !== confirmPassword) {
       setError("Mật khẩu mới không khớp.");
       return;
     }
-  
+
     if (!validatePassword(newPassword)) {
       setError("Mật khẩu không đáp ứng yêu cầu bảo mật.");
       return;
     }
-  
+
     try {
-      // Sử dụng PUT và thêm tham số vào URL
       const response = await fetch(`/api/auth/change-password?userId=${user?.id}&oldPassword=${currentPassword}&newPassword=${newPassword}`, {
         method: "PUT",
       });
 
       if (!response.ok) {
-        // response không ok, cố gắng lấy message từ response body
         const errorData = await response.json().catch(() => null);
         throw new Error(errorData?.message || "Đổi mật khẩu thất bại");
       }
-    
-      const data = await response.json().catch(() => null);
-      console.log("Thành công:", data);
+
+      // const data = await response.json().catch(() => null); // data might be null if response is 204 No Content
+      // console.log("Thành công:", data);
 
       console.log("Đổi mật khẩu thành công!");
       setSuccess("Đổi mật khẩu thành công!");
@@ -303,8 +303,10 @@ const ProfileDetail: React.FC = () => {
         setNewPassword("");
         setConfirmPassword("");
         setShowPasswordModal(false);
+        setError("");
+        setSuccess("");
       }, 3000);
-    } 
+    }
     catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || "Có lỗi xảy ra.");
@@ -313,7 +315,7 @@ const ProfileDetail: React.FC = () => {
       }
     }
   };
-  
+
   return (
     <div className="sm:p-4 p-2 bg-white rounded-xl shadow max-w-6xl mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-[1.3fr_auto_1fr] gap-6">
@@ -340,7 +342,6 @@ const ProfileDetail: React.FC = () => {
                 <input
                   type="email"
                   className="w-full border rounded px-4 py-2 pr-10 bg-gray-100 cursor-not-allowed"
-                  // value={user?.email}
                   value={formData.email}
                   disabled
                 />
@@ -411,8 +412,8 @@ const ProfileDetail: React.FC = () => {
                   Ngày sinh <span className="text-gray-500 font-normal">(Không bắt buộc)</span>
                 </label>
                 <div className="flex gap-2">
-                  {/* Ngày */}
                   <select
+                    name="birthDay"
                     className="border rounded p-2 flex-1"
                     value={formData.birthDay || ""}
                     onChange={(e) => {
@@ -427,9 +428,8 @@ const ProfileDetail: React.FC = () => {
                       </option>
                     ))}
                   </select>
-
-                  {/* Tháng */}
                   <select
+                    name="birthMonth"
                     className="border rounded p-2 flex-1"
                     value={formData.birthMonth || ""}
                     onChange={(e) => {
@@ -444,9 +444,8 @@ const ProfileDetail: React.FC = () => {
                       </option>
                     ))}
                   </select>
-
-                  {/* Năm */}
                   <select
+                    name="birthYear"
                     className="border rounded p-2 flex-1"
                     value={formData.birthYear || ""}
                     onChange={(e) => {
@@ -467,52 +466,35 @@ const ProfileDetail: React.FC = () => {
                 </div>
               </div>
 
-
-              {/* Khuyến mãi + Chính sách */}
               <div className="space-y-4 text-sm">
                 <label className="flex items-center">
                   <input type="checkbox" className="mr-2" /> Nhận thông tin khuyến mãi qua email
                 </label>
                 <label className="flex items-start">
                   <input type="checkbox" className="mr-2 mt-1" checked disabled />
-                    Tôi đồng ý với{" "}
+                  Tôi đồng ý với{" "}
                   <span className="text-blue-600 ml-1 cursor-pointer">
                     chính sách xử lý dữ liệu cá nhân
                   </span>
                 </label>
               </div>
 
-              {/* Nút Cập nhật */}
-              {/* <button
-                className={`w-full ${isChanged ? 'bg-green-700' : 'bg-gray-500'} text-white font-semibold py-2 rounded-3xl mt-5`}
-                disabled={!isChanged}
-                onClick={handleUpdateName}
-              >
-                Cập nhật
-              </button> */}
-
-              {/* Cách gộp 3 cái */}
               <button
-                className={`w-full ${isChanged ? 'bg-green-700' : 'bg-gray-500'} text-white font-semibold py-2 rounded-3xl mt-5`}
+                className={`w-full ${isChanged ? 'bg-green-700 hover:bg-green-800' : 'bg-gray-400 cursor-not-allowed'} text-white font-semibold py-2 rounded-3xl mt-5 transition-colors`}
                 disabled={!isChanged}
                 onClick={handleUpdate}
               >
                 Cập nhật
               </button>
-
             </div>
           </div>
         </div>
 
-        {/* Thanh ngăn cách dọc */}
         <div className="hidden md:block w-px bg-gray-300" />
 
-        {/* Cột phải: box từng phần */}
         <div className="">
-          {/* Số điện thoại và Email */}
           <div>
             <p className="text-gray-900 font-semibold mb-4">Số điện thoại và Email</p>
-
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3 text-sm text-gray-700">
                 <Phone className="w-4 h-4 text-gray-500" />
@@ -521,16 +503,16 @@ const ProfileDetail: React.FC = () => {
                   <p className="text-gray-500">{user?.phone || "Chưa cập nhật"}</p>
                 </div>
               </div>
-
-              <button className="text-sm bg-gray-100 text-gray-700 border px-4 py-1 rounded"
-                      onClick={() => setShowPhoneModal(true)}>
-                  Cập nhật
+              <button className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 border px-4 py-1 rounded transition-colors"
+                onClick={() => {
+                  setNewPhone(user?.phone || ''); // Pre-fill with current phone
+                  setShowPhoneModal(true);
+                }}>
+                Cập nhật
               </button>
-
               {showPhoneModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
                   <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg relative">
-                    {/* Nút X */}
                     <button
                       onClick={() => {
                         setShowPhoneModal(false);
@@ -541,23 +523,24 @@ const ProfileDetail: React.FC = () => {
                     >
                       <X className="w-5 h-5" />
                     </button>
-
-                    {/* Nội dung modal */}
                     <h2 className="text-lg font-semibold mb-4">Thay đổi số điện thoại</h2>
-                    <label className="block mb-2 font-medium">Số điện thoại mới</label>
+                    <label htmlFor="newPhone" className="block mb-2 font-medium">Số điện thoại mới</label>
                     <input
-                      type="text"
+                      id="newPhone"
+                      type="tel"
                       value={newPhone}
-                      onChange={(e) => setNewPhone(e.target.value)}
+                      onChange={(e) => {
+                        setNewPhone(e.target.value);
+                        if (phoneError) setPhoneError(''); // Clear error on typing
+                      }}
                       placeholder="Nhập số điện thoại mới"
                       className="w-full border rounded px-4 py-2 mb-2"
                     />
                     {phoneError && (
                       <p className="text-red-500 text-sm mb-2">{phoneError}</p>
                     )}
-
                     <button
-                      className="bg-green-700 mt-2 text-white font-semibold px-6 py-2 rounded-3xl w-full"
+                      className="bg-green-700 mt-2 text-white font-semibold px-6 py-2 rounded-3xl w-full hover:bg-green-800 transition-colors"
                       onClick={handleUpdatePhone}
                     >
                       Cập nhật
@@ -565,9 +548,7 @@ const ProfileDetail: React.FC = () => {
                   </div>
                 </div>
               )}
-
             </div>
-
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3 text-sm text-gray-700">
                 <Mail className="w-4 h-4 text-gray-500" />
@@ -579,10 +560,8 @@ const ProfileDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* Địa chỉ */}
           <div>
             <p className="text-gray-900 font-semibold mt-4 mb-4">Địa chỉ</p>
-
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3 text-sm text-gray-700">
                 <MapPin className="w-4 h-4 text-gray-500" />
@@ -591,18 +570,18 @@ const ProfileDetail: React.FC = () => {
                   <p className="text-gray-500">{user?.address || "Chưa cập nhật"}</p>
                 </div>
               </div>
-
               <button
-                className="text-sm bg-gray-100 text-gray-700 border px-4 py-1 rounded"
-                onClick={() => setShowAddressModal(true)}
+                className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 border px-4 py-1 rounded transition-colors"
+                onClick={() => {
+                  setNewAddress(user?.address || ''); // Pre-fill with current address
+                  setShowAddressModal(true);
+                }}
               >
                 Cập nhật
               </button>
-
               {showAddressModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
                   <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg relative">
-                    {/* Nút X */}
                     <button
                       onClick={() => {
                         setShowAddressModal(false);
@@ -613,23 +592,24 @@ const ProfileDetail: React.FC = () => {
                     >
                       <X className="w-5 h-5" />
                     </button>
-
-                    {/* Nội dung modal */}
                     <h2 className="text-lg font-semibold mb-4">Thay đổi địa chỉ</h2>
-                    <label className="block mb-2 font-medium">Địa chỉ mới</label>
+                    <label htmlFor="newAddress" className="block mb-2 font-medium">Địa chỉ mới</label>
                     <input
+                      id="newAddress"
                       type="text"
                       value={newAddress}
-                      onChange={(e) => setNewAddress(e.target.value)}
+                      onChange={(e) => {
+                        setNewAddress(e.target.value)
+                        if (addressError) setAddressError(''); // Clear error on typing
+                      }}
                       placeholder="Nhập địa chỉ mới"
                       className="w-full border rounded px-4 py-2 mb-2"
                     />
                     {addressError && (
                       <p className="text-red-500 text-sm mb-2">{addressError}</p>
                     )}
-
                     <button
-                      className="bg-green-700 mt-2 text-white font-semibold px-6 py-2 rounded-3xl w-full"
+                      className="bg-green-700 mt-2 text-white font-semibold px-6 py-2 rounded-3xl w-full hover:bg-green-800 transition-colors"
                       onClick={handleUpdateAddress}
                     >
                       Cập nhật
@@ -640,8 +620,6 @@ const ProfileDetail: React.FC = () => {
             </div>
           </div>
 
-
-          {/* Bảo mật */}
           <div>
             <p className="text-gray-900 font-semibold mt-4 mb-4">Bảo mật</p>
             <div className="flex justify-between items-center">
@@ -650,17 +628,23 @@ const ProfileDetail: React.FC = () => {
                 <span>Đổi mật khẩu</span>
               </div>
               <button
-                className="text-sm bg-gray-100 text-gray-700 border px-4 py-1 rounded"
-                onClick={() => setShowPasswordModal(true)}
+                className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 border px-4 py-1 rounded transition-colors"
+                onClick={() => {
+                  setError('');
+                  setSuccess('');
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setShowPasswordModal(true)
+                }}
               >
                 Thay đổi
               </button>
             </div>
           </div>
 
-          {/* Modal đổi mật khẩu */}
           {showPasswordModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
               <div className="bg-white p-6 rounded-xl w-full max-w-lg shadow-lg relative">
                 <button
                   onClick={() => setShowPasswordModal(false)}
@@ -668,13 +652,10 @@ const ProfileDetail: React.FC = () => {
                 >
                   <X className="w-5 h-5" />
                 </button>
-
                 <h2 className="text-lg font-semibold mb-4">Thay đổi mật khẩu</h2>
-
                 <div className="space-y-4">
-                  {error && <p className="text-red-500 text-sm">{error}</p>}
-                  {success && <p className="text-green-600 text-sm">{success}</p>}
-
+                  {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                  {success && <p className="text-green-600 text-sm text-center">{success}</p>}
                   <div className="relative">
                     <label className="block mb-1 font-medium">Mật khẩu hiện tại:</label>
                     <input
@@ -687,12 +668,11 @@ const ProfileDetail: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-2 mt-3 text-gray-500"
+                      className="absolute right-3 top-9 text-gray-500"
                     >
                       {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-
                   <div className="relative">
                     <label className="block mb-1 font-medium">Mật khẩu mới:</label>
                     <input
@@ -705,7 +685,7 @@ const ProfileDetail: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-2 mt-3 text-gray-500"
+                      className="absolute right-3 top-9 text-gray-500"
                     >
                       {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -713,7 +693,6 @@ const ProfileDetail: React.FC = () => {
                       Mật khẩu phải có 8-30 ký tự, gồm chữ hoa, chữ thường, số và ít nhất 1 ký tự '@'
                     </p>
                   </div>
-
                   <div className="relative">
                     <label className="block mb-1 font-medium">Nhập lại mật khẩu mới:</label>
                     <input
@@ -726,15 +705,14 @@ const ProfileDetail: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-2 mt-3 text-gray-500"
+                      className="absolute right-3 top-9 text-gray-500"
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-
                   <button
                     onClick={handleChangePassword}
-                    className="bg-green-700 text-white font-semibold px-6 py-2 rounded-3xl w-full"
+                    className="bg-green-700 text-white font-semibold px-6 py-2 rounded-3xl w-full hover:bg-green-800 transition-colors"
                   >
                     Cập nhật
                   </button>
@@ -742,7 +720,6 @@ const ProfileDetail: React.FC = () => {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

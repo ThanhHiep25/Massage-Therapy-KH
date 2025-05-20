@@ -11,6 +11,7 @@ import { Menu } from "lucide-react";
 
 
 const tabs = [
+  {key: "home", label: "Trang chủ"},
   { key: "account", label: "Thông tin tài khoản" },
   { key: "profile", label: "Quản lý tài khoản" },
   { key: "listbooking", label: "Lịch hẹn của tôi" },
@@ -33,7 +34,7 @@ const formatDate = (dateString: string | undefined): string => {
 const AccountCustomer: React.FC = () => {
   const location = useLocation();
   const pathParts = location.pathname.split("/");
-  const tab = pathParts[2] || "profile"; // 🟢 lấy phần sau "/profile/"
+  const tab = pathParts[2] || "profile"; // lấy phần sau "/profile/"
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 
@@ -53,7 +54,10 @@ const AccountCustomer: React.FC = () => {
 
 
   const setActiveTab = (tabKey: string) => {
-    if (tabKey === "profile") {
+    if (tabKey === "home") {
+      navigate(`/`);
+      setIsMobileMenuOpen(false);
+    }else if (tabKey === "profile") {
       navigate(`/profile`); // Không có thêm /profile
       setIsMobileMenuOpen(false);
     } else {
@@ -64,6 +68,13 @@ const AccountCustomer: React.FC = () => {
 
   const renderContent = () => {
     switch (tab) {
+      case "home":
+        return (
+          <div>
+            <h2 className="text-xl font-semibold mb-6">Trang chủ</h2>
+            <p>Trang chủ</p>
+          </div>
+        )
       case "account":
         return (
           <div>
@@ -195,9 +206,9 @@ const AccountCustomer: React.FC = () => {
         );
       case "myorders":
         return (
-          <div>
+          <div >
             <h2 className="text-xl font-semibold mb-2">Danh sách đơn hàng</h2>
-            <div className="flex space-x-6 border-b border-gray-200 mb-4">
+            <div className="flex space-x-6 border-b  border-gray-200 mb-4">
               {[
                 { label: "Tất cả", key: "orderall" },
                 { label: "Mới đặt", key: "orderpending", status: ["PENDING"] },
@@ -238,7 +249,7 @@ const AccountCustomer: React.FC = () => {
 
   return (
     <div className="flex  justify-center py-10 px-4 min-h-screen" style={{ background:"url('../../../public/dua.jpg')"}}>
-      <div className="flex sm:flex-row flex-col w-full max-w-7xl gap-4">
+      <div className="flex sm:flex-row flex-col w-full max-w-7xl gap-4 sm:mt-10">
         {/* Hamburger Menu Button (mobile only) */}
         <div className="lg:hidden">
           <button onClick={toggleMobileMenu} className="p-1 sm:p-2 text-white hover:text-blue-500">
@@ -317,7 +328,7 @@ const AccountCustomer: React.FC = () => {
 
         {/* Nội dung */}
         <div className="sm:w-3/4 w-full">
-          <div className="bg-white rounded-xl sm:shadow sm:p-6 p-2 min-h-[510px]">
+          <div className="bg-white rounded-xl sm:shadow sm:p-6 p-2  min-h-[510px]">
             {renderContent()}
           </div>
         </div>

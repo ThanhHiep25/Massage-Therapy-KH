@@ -53,11 +53,11 @@ const DichVu: React.FC = () => {
     //     }
     // }, [selectedCategoryId]);
 
-    const getServiceTypesByCategory = (categoryId: number): string[] => {
-        const filteredServices = services.filter(s => s.categoryId === categoryId);
-        const types = [...new Set(filteredServices.map(s => s.serviceType))]; // loại bỏ trùng lặp
-        return types;
-    };
+    // const getServiceTypesByCategory = (categoryId: number): string[] => {
+    //     const filteredServices = services.filter(s => s.categoryId === categoryId);
+    //     const types = [...new Set(filteredServices.map(s => s.serviceType))]; // loại bỏ trùng lặp
+    //     return types;
+    // };
 
     const sortOptions = [
         { value: 'noibat', label: 'Nổi bật' },
@@ -146,25 +146,25 @@ const DichVu: React.FC = () => {
 
     const [isFilteredByPrice, setIsFilteredByPrice] = useState(false);
 
-    const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null);
+    // const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null);
 
     const filteredServices = services.filter((service) => {
         return (
             (service.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (service.categoryId === selectedCategoryId &&
-                (!selectedServiceType || service.serviceType === selectedServiceType))
+            (service.categoryId === selectedCategoryId)
+                // (!selectedServiceType || service.serviceType === selectedServiceType))
         );
     });
 
     // Khi chọn loại dịch vụ
-    const handleSelectServiceType = (type: string) => {
-        // Nếu nhấn lại cái đang chọn → bỏ chọn
-        if (type === selectedServiceType) {
-            setSelectedServiceType("");
-        } else {
-            setSelectedServiceType(type === "ALL" ? "" : type);
-        }
-    };
+    // const handleSelectServiceType = (type: string) => {
+    //     // Nếu nhấn lại cái đang chọn → bỏ chọn
+    //     if (type === selectedServiceType) {
+    //         setSelectedServiceType("");
+    //     } else {
+    //         setSelectedServiceType(type === "ALL" ? "" : type);
+    //     }
+    // };
 
     // Hàm xử lý khi click nút áp dụng khoảng giá
     const handleApplyPrice = () => {
@@ -414,14 +414,14 @@ const DichVu: React.FC = () => {
                         </Typography>
 
                         {selectedCategoryId && (
-                            <div className="flex flex-col gap-2 mt-2"
+                            <div className="flex sm:flex-row flex-col gap-2 mt-2"
                             >
-                                <Typography fontSize={16} fontWeight={500}>
+                                {/* <Typography fontSize={16} fontWeight={500}>
                                     Các loại dịch vụ:
-                                </Typography>
+                                </Typography> */}
 
                                 {/* Nút "Tất cả" */}
-                                <Box px={1.5} py={0.5}
+                                {/* <Box px={1.5} py={0.5}
                                     onClick={() => handleSelectServiceType("ALL")}
                                     sx={{
                                         backgroundColor: !selectedServiceType || selectedServiceType === 'ALL' ? '#059669' : '#e5e7eb',
@@ -435,11 +435,11 @@ const DichVu: React.FC = () => {
                                         },
                                     }}>
                                     Tất cả
-                                </Box>
+                                </Box> */}
 
 
                                 {/* Các tag serviceType */}
-                                {getServiceTypesByCategory(selectedCategoryId).map((type, index) => (
+                                {/* {getServiceTypesByCategory(selectedCategoryId).map((type, index) => (
                                     <Box
                                         key={index}
                                         px={1.5}
@@ -459,7 +459,7 @@ const DichVu: React.FC = () => {
                                     >
                                         {type}
                                     </Box>
-                                ))}
+                                ))} */}
                             </div>
                         )}
 

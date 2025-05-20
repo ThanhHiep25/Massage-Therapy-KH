@@ -1,5 +1,5 @@
 import axios from "axios";
-import { CustomerData, CustomerDataFull } from "../interface/CustomerData_interface";
+import { CustomerData } from "../interface/CustomerData_interface";
 
 // Khởi tạo axios instance
 const api = axios.create({
@@ -80,7 +80,7 @@ export const getCustomers = async () => {
   };
   
   // Cập nhật thông tin khách hàng
-  export const updateCustomer = async (id: number, data: CustomerDataFull) => {
+  export const updateCustomer = async (id: number, data: any) => {
     try {
       const response = await api.put(`/auth/${id}`, data);
       return response.data;

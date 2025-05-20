@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAllOrders } from "../../service/apiOrder";
+import { getAllOrderById, updateOrder } from "../../service/apiOrder";
 import { OrderResponse } from "../../interface/Order_interface";
 import { motion } from "framer-motion";
 import { CreditCard } from "lucide-react";
@@ -7,6 +7,7 @@ import { Pagination } from "@mui/material";
 import PaymentOrderModal from "../Payment/PaymentOrderModal";
 import dayjs from "dayjs";
 import "dayjs/locale/vi"; // Đảm bảo dùng tiếng Việt
+import { toast } from "react-toastify";
 dayjs.locale("vi");
 
 const pageSize = 8;
@@ -43,14 +44,14 @@ const OrderList = ({ filterByStatus = [] }: OrderListProps) => {
 
     const fetchOrders = async () => {
         try {
-            const response = await getAllOrders();
+
             const userData = localStorage.getItem("user");
             if (!userData) return;
 
             const currentUser = JSON.parse(userData);
             const userId = currentUser?.id;
+            const response = await getAllOrderById(userId);
             const now = new Date();
-
             const userOrders = response.filter(
                 (order: OrderResponse) => order.user?.id === userId
             );
@@ -146,19 +147,10 @@ const OrderList = ({ filterByStatus = [] }: OrderListProps) => {
         };
 
         try {
-            const res = await fetch(`/api/orders/${orderId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updatedData),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Không thể cập nhật đơn hàng");
-            }
-
+            await updateOrder(orderId, updatedData);
             await fetchOrders();
             console.log("Cập nhật số điện thoại thành công cho orderId:", orderId);
+            toast.success("Cập nhật số điện thoại thành công");
             return true;
         } catch (error) {
             console.error("Lỗi khi cập nhật số điện thoại:", error instanceof Error ? error.message : error);
@@ -187,19 +179,12 @@ const OrderList = ({ filterByStatus = [] }: OrderListProps) => {
         };
 
         try {
-            const res = await fetch(`/api/orders/${orderId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updatedData),
-            });
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Không thể cập nhật địa chỉ");
-            }
-
+            await updateOrder(orderId, updatedData);
             await fetchOrders();
             console.log("Cập nhật địa chỉ giao hàng thành công cho orderId:", orderId);
+            toast.success("Cập nhật địa chỉ giao hàng thành công");
+            return true;
         } catch (error) {
             console.error("Lỗi khi cập nhật địa chỉ:", error instanceof Error ? error.message : error);
         }
@@ -227,19 +212,11 @@ const OrderList = ({ filterByStatus = [] }: OrderListProps) => {
         };
 
         try {
-            const res = await fetch(`/api/orders/${orderId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updatedData),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || "Không thể cập nhật ghi chú");
-            }
-
+            await updateOrder(orderId, updatedData);
             await fetchOrders();
             console.log("Cập nhật ghi chú thành công cho orderId:", orderId);
+            toast.success("Cập nhật ghi chú thành công");
+            return true;
         } catch (error) {
             console.error("Lỗi khi cập nhật ghi chú:", error instanceof Error ? error.message : error);
         }
@@ -253,7 +230,7 @@ const OrderList = ({ filterByStatus = [] }: OrderListProps) => {
             className="sm:p-6 sm:bg-white rounded-lg shadow-md"
         >
             {filteredOrders.length > 0 ? (
-                <div className="grid gap-6">
+                <div className="grid overflow-auto h-[65vh] gap-6">
                     {currentOrders.map((order) => (
                         <div key={order.id} className="relative bg-[#fafafa] border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition duration-300">
                             {order.isNew && (

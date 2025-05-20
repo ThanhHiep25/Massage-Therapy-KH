@@ -333,7 +333,7 @@ const Menu: React.FC = () => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 20 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
-                        className="fixed  inset-0 md:bottom-0 md:right-4 md:left-auto md:top-auto w-full sm:m-5 sm:p-1 h-full md:w-[380px] md:h-[calc(100vh-100px)] md:max-h-[650px] lg:right-16 bg-white rounded-none md:rounded-xl shadow-2xl border border-gray-300 overflow-hidden z-50"
+                        className="fixed  inset-0 md:bottom-0 md:right-4 md:left-auto md:top-auto w-full sm:m-5 sm:p-1 h-full md:w-[480px] md:h-[calc(100vh-100px)] md:max-h-[650px] lg:right-16 bg-white rounded-none md:rounded-xl shadow-2xl border border-gray-300 overflow-hidden z-50"
                     >
                         <button
                             className="absolute top-3 right-3 text-gray-600 md:text-white hover:text-red-500 z-10 bg-black/20 md:bg-transparent rounded-full p-1"
